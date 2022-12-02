@@ -1,0 +1,131 @@
+---
+title: "midterm_project"
+output: html_document
+date: "2022-11-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(magrittr)
+library(ggplot2)
+```
+
+## read data
+
+```{r}
+# diabetes <- read.csv("diabetes.csv")
+# cs <- read.csv("csgo_games.csv")
+# cacao <- read.csv("flavors_of_cacao.csv")
+# choco <- read.csv("chocolate.csv")
+# airline <- read.csv("airline_train.csv")
+# hotel <- read.csv("hotel_bookings.csv")
+
+food <- read.csv("https://data.boston.gov/dataset/03693648-2c62-4a2c-a4ec-48de2ee14e18/resource/4582bec6-2b4f-4f9e-bc55-cbaa73117f4c/download/tmp5g35jyi9.csv")
+```
+
+
+get the data from Kaggle:
+https://www.kaggle.com/code/deetisood/dataset-for-jobs/data
+dataset for jobs
+
+```{r}
+job <- read.csv("eda_data.csv")
+salary <- read.csv("salary_data_cleaned.csv")
+```
+
+```{r}
+test1 <- job %>% mutate(python=ifelse(str_detect(job$Job.Description,regex("python", ignore_case = T)),1,0))
+test1 %<>% mutate(diff=python_yn-python)
+sum(test1$diff)
+
+test1 <- job %>% mutate(R=ifelse(grepl("language[^\\.!?]*R", Job.Description),1,0))
+test1 %<>% mutate(diff1=R_yn-R)
+
+test1 <- job %>% mutate(aws_1=ifelse(str_detect(job$Job.Description,regex("AWS", ignore_case = F)),1,0))
+test1 <- job %>% mutate(aws_1=ifelse(str_detect(job$Job.Description,regex("AWS", ignore_case = F)),1,0))
+
+```
+
+Larger dataset,
+https://www.kaggle.com/datasets/josephgutstadt/data-jobs
+
+```{r}
+all_jobs <- read.csv("all_jobs.csv")
+```
+
+```{r}
+all_jobs %<>% mutate(python=ifelse(str_detect(all_jobs$Job.Description,regex("python", ignore_case = T)),1,0))
+all_jobs %<>% mutate(python=ifelse(str_detect(all_jobs$Job.Description,regex("R", ignore_case = F)),1,0))
+
+
+```
+
+
+
+
+data related jobs survey
+https://www.kaggle.com/datasets/phuchuynguyen/datarelated-developers-survey-by-stack-overflow
+
+```{r}
+survey <- read.csv("diabetes.csv")
+```
+
+
+
+
+
+## job cleaning
+
+```{r}
+## clean the string estimated salary column
+job %<>% separate(Salary.Estimate, c("bottom", "top"), sep = "-")
+regexp <- "[[:digit:]]+"
+job %<>% mutate(bottom = as.numeric(str_extract(bottom, regexp)))
+job %<>% mutate(top = as.numeric(str_extract(top, regexp)))
+job %<>% mutate(median=(bottom+top)/2, .before=top)
+```
+
+## eda
+
+```{r}
+ggplot(data = job) + 
+  aes(x = log(Rating), y = log(median)) + 
+  geom_point(aes(color = factor(Revenue)), size = .6) + 
+  geom_smooth(aes(color = factor(Revenue)), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
+```
+
+```{r}
+ggplot(data = job) + 
+  aes(x = log(Rating), y = log(median)) + 
+  geom_point(aes(color = factor(Size)), size = .6) + 
+  geom_smooth(aes(color = factor(Size)), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
+```
+
+```{r}
+ggplot(data = job) + 
+  aes(x = python_yn, y = log(median)) + 
+  geom_point(aes(color = factor(Size)), size = .6) + 
+  geom_smooth(aes(color = factor(Size)), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(a) Salary vs Rating", x = "Requred python or not", y = "log(Salary)")
+```
+
+```{r}
+ggplot(data = job) + 
+  aes(x = python_yn, y = log(median)) + 
+  geom_point(aes(color = factor(Size)), size = .6) + 
+  geom_smooth(aes(color = factor(Size)), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(a) Salary vs Rating", x = "Requred python or not", y = "log(Salary)")
+```
+
+
+
+
+
+
+
+
+
+
