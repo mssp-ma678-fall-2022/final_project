@@ -78,7 +78,7 @@ ggplot(data=all_jobs, aes(x=median)) +
 
 First of all, I would like to find the relationship between the programming skills, such as R, Python, SQL, etc., and the median income posted by In the following graph, I am showing the skills mentioned in the job description in relation to the predictive median income from companies in different sizes and revenues.
 
-```{r echo=FALSE, fig.height=3.6, fig.width=5, fig.cap="Positive Relation between Log Income and Skills by Size", warning=FALSE}
+```{r echo=FALSE, fig.height=3.6, fig.width=8, fig.cap="Positive Relation between Log Income and Skills by Size", warning=FALSE}
 python_graph <- ggplot(data = all_jobs) + 
   aes(x = python, y = log(median)) + 
   geom_point(aes(color = factor(Size)), size = .6) + 
@@ -107,11 +107,11 @@ aws_graph <- ggplot(data = all_jobs) +
 grid.arrange(python_graph, r_graph, spark_graph, aws_graph, ncol=2)
 ```
 
-As you can see in the graph, these skills are positively correlated with the log income. For example, the job description has the key word: python; unsurprisingly, jobs with Python mentioned in description tend to have a higher median income than those without.
+As you can see in the figure 2, these skills are positively correlated with the log income. For example, the job description has the key word: python; unsurprisingly, jobs with Python mentioned in description tend to have a higher median income than those without.
 
-However, there are also skills that are not as much related to the predictive median income or even has a negative relationship on the income. The SQL skill and Excel skill seem to not be a positive influence on the income.
+However, in the figure 3, there are also skills that are not as much related to the predictive median income or even has a negative relationship on the income. The SQL skill and Excel skill seem to not be a positive influence on the income.
 
-```{r echo=FALSE, fig.height=2.5, fig.width=5, fig.cap="Non Positive Relation between Log Income and Skills", warning=FALSE}
+```{r echo=FALSE, fig.height=2.5, fig.width=8, fig.cap="Non Positive Relation between Log Income and Skills", warning=FALSE}
 sql_graph <- ggplot(data = all_jobs) + 
   aes(x = sql, y = log(median)) + 
   geom_point(aes(color = factor(Size)), size = .6) + 
@@ -128,7 +128,7 @@ excel_graph <- ggplot(data = all_jobs) +
 grid.arrange(sql_graph, excel_graph, ncol=2)
 ```
 
-I would also like to get the relationship between the continuous predictor, rating of the companies, and predictive income. There are multiple classifications on jobs provided by different companies. For example, the location of the job, the sector of the job, and the even companies' sizes and revenues. All of these classifications can be incorporated into the multilevel regression model. In the following graph, I am showing the rating of the company in relation to the predictive median income of the job posts for companies in different sizes and revenues.
+In figure 4, I would also like to get the relationship between the continuous predictor, rating of the companies, and predictive income. There are multiple classifications on jobs provided by different companies. For example, the location of the job, the sector of the job, and the even companies' sizes and revenues. All of these classifications can be incorporated into the multilevel regression model. In the following graph, I am showing the rating of the company in relation to the predictive median income of the job posts for companies in different sizes and revenues.
 
 ```{r echo=FALSE, fig.height=3.6, fig.width=5, fig.cap="Relation between Log Income and Rating", warning=FALSE}
 ggplot(data = all_jobs) + 
@@ -137,6 +137,8 @@ ggplot(data = all_jobs) +
   geom_smooth(aes(color = factor(Size)), method = "lm", se = FALSE, formula = 'y ~ x') + 
   labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
 ```
+
+\newpage
 
 ## Model fitting
 
@@ -210,7 +212,7 @@ coef(summary(model1)) %>% kable() %>% kable_styling()
 plotFEsim(FEsim(model1, n.sims = 100), level = 0.9, stat = 'median', intercept = FALSE)
 ```
 
-From the graph above, we can see the significance of fixed effect on all predictors. As you can see, there are 2 predictors are not as significant as others: the `R` and `Rating`.
+From figure 5, we can see the significance of fixed effect on all predictors. As you can see, there are 2 predictors are not as significant as others: the `R` and `Rating`.
 
 ```{r echo=FALSE}
 RandomEffects1 <- as.data.frame(VarCorr(model1))
@@ -227,7 +229,6 @@ head(round(ranef(model1)$Job.Title, digits = 2))  %>% kable() %>% kable_styling(
 
 ```{r echo=FALSE, fig.cap="Posterior Predictive Check"}
 performance::posterior_predictive_check(object = model1, iterations = 100)
-
 ```
 
 From the figure 6, we can see a pretty close posterior predictive curve compared to the actual ones.
@@ -274,12 +275,12 @@ ggplot(data = all_jobs) +
   labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
 ```
 
-```{r echo=FALSE, fig.height=3.6, fig.width=5}
+```{r echo=FALSE, fig.height=3.6, fig.width=5, warning=FALSE}
 ggplot(data=all_jobs, aes(x=python,y=median)) +
   geom_point() +
   stat_smooth(method="lm", fullrange=TRUE) +
   xlab("Rating") + ylab("median for expected income") + 
-  facet_wrap( ~ Size) +
+  facet_wrap( ~ Size, ncol = 2) +
   theme(axis.title=element_text(size=16),
         axis.text=element_text(size=14),
         strip.text=element_text(size=14))
