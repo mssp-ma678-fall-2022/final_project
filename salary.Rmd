@@ -11,37 +11,15 @@ library(magrittr)
 library(ggplot2)
 library(lme4)
 library(rstanarm)
+library(sjPlot)
+library(lattice)
 ```
 
 ## Read data
- 
 
-get the data from Kaggle: <https://www.kaggle.com/code/deetisood/dataset-for-jobs/data> dataset for jobs
+get the data from Kaggle:  <https://www.kaggle.com/datasets/josephgutstadt/data-jobs> dataset for jobs
 
-```{r}
-job <- read.csv("eda_data.csv")
-salary <- read.csv("salary_data_cleaned.csv")
-```
-
-```{r}
-test1 <- job %>% mutate(python=ifelse(str_detect(job$Job.Description,regex("python", ignore_case = T)),1,0))
-test1 %<>% mutate(diff=python_yn-python)
-sum(test1$diff)
-
-test1 <- test1 %>% mutate(R=ifelse(grepl("language[^\\.!?]*R", Job.Description),1,0))
-test1 %>% mutate(diff1=R_yn-R)
-
-test1 <- test1 %>% mutate(aws_1=ifelse(str_detect(job$Job.Description,regex("AWS", ignore_case = F)),1,0))
-test1 <- test1 %>% mutate(spark_1=ifelse(str_detect(job$Job.Description,regex("spark", ignore_case = T)),1,0))
-test1 <- test1 %>% mutate(excel_1=ifelse(str_detect(job$Job.Description,regex("excel", ignore_case = T)),1,0))
-
-test1 <- test1 %>% mutate(seniority_1=ifelse(str_detect(job$Job.Title,regex("senior", ignore_case = T)),1,0))
-
-```
-
-Larger dataset, <https://www.kaggle.com/datasets/josephgutstadt/data-jobs>
-
-```{r}
+```{r include=FALSE}
 all_jobs <- read.csv("all_jobs.csv")
 ```
 
@@ -51,7 +29,7 @@ Most information is contained in the job descriptions. So I would like to get ke
 
 ## Data cleaning
 
-```{r}
+```{r include=FALSE}
 ## search if language and R are in the same sentence
 all_jobs %<>% mutate(R=ifelse(grepl("language[^\\.!?]*R", Job.Description),1,0))
 
@@ -65,9 +43,9 @@ all_jobs %<>% mutate(seniority=ifelse(str_detect(all_jobs$Job.Title,regex("senio
 
 ```
 
-We need to clean the Job Estimated Salary column. The original column is a string that contain the range of predicted salary. So we first extract the two ends of the salary range. Then, I planned to take the average on the estimated salary and use it as the outcome of the regression model; and set the other columns as the predictors. Observed that there are -1 values in these columns, I mutate these values to Unknown or Not Applicable by examining the classifications. 
+We need to clean the Job Estimated Salary column. The original column is a string that contain the range of predicted salary. So we first extract the two ends of the salary range. Then, I planned to take the average on the estimated salary and use it as the outcome of the regression model; and set the other columns as the predictors. Observed that there are -1 values in these columns, I mutate these values to Unknown or Not Applicable by examining the classifications.
 
-```{r}
+```{r include=FALSE}
 ## clean the string estimated salary column
 all_jobs %<>% separate(Salary.Estimate, c("bottom", "top"), sep = "-")
 regexp <- "[[:digit:]]+"
@@ -88,49 +66,18 @@ all_jobs %>% mutate(Company.Name=ifelse(Company.Name=="", "Not Applicable",Compa
 
 ## EDA
 
-Since our goal is to see if the predictors that have an effect on the median outcome of the data related job post, I  would like to get a glimpse at the distribution of the median income. And on the graph below, we can see most jobs are offering around 70k on the Glassdoor. I'd like to find out what predictors influence the income the most. 
+Since our goal is to see if the predictors that have an effect on the median outcome of the data related job post, I would like to get a glimpse at the distribution of the median income. And on the graph below, we can see most jobs are offering around 70k on the Glassdoor. I'd like to find out what predictors influence the income the most.
 
-
-```{r}
+```{r echo=TRUE, fig.cap="Income Distribution"}
 ggplot(data=all_jobs, aes(x=median)) +
   geom_histogram(fill="white", color="black",bins=30) +
   labs(x = "Median expected income in thousands") 
 
 ```
 
-First of all, I would like to find the relationship between the programming skills, such as R, Python, SQL, etc., and the median income posted by  In the following graph, I am showing the rating of the company in relation to the predictive median income of the job posts for companies in different sizes and revenues. And 
+First of all, I would like to find the relationship between the programming skills, such as R, Python, SQL, etc., and the median income posted by In the following graph, I am showing the skills mentioned in the job description in relation to the predictive median income from companies in different sizes and revenues.
 
-
-```{r}
-ggplot(data=all_jobs, aes(x=python,y=median)) +
-  geom_point() +
-  stat_smooth(method="lm", fullrange=TRUE) +
-  xlab("Rating") + ylab("median for expected income") + 
-  facet_wrap( ~ Size) +
-  theme(axis.title=element_text(size=16),
-        axis.text=element_text(size=14),
-        strip.text=element_text(size=14))
-```
-
-I would like to get the relationship between the continuous predictor, rating of the companies, and predictive income. There are mutiple classifications on jobs provided by different companies. For example, the location of the job, the sector of the job, and the even companies' sizes and revenues. All of these classifications can be incorporated into the multilevel regression model. In the following graph, I am showing the rating of the company in relation to the predictive median income of the job posts for companies in different sizes and revenues. 
-
-```{r}
-ggplot(data = all_jobs) + 
-  aes(x = log(Rating+1), y = log(median)) + 
-  geom_point(aes(color = factor(Revenue)), size = .6) + 
-  geom_smooth(aes(color = factor(Revenue)), method = "lm", se = FALSE, formula = 'y ~ x') + 
-  labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
-```
-
-```{r}
-ggplot(data = all_jobs) + 
-  aes(x = log(Rating+1), y = log(median)) + 
-  geom_point(aes(color = factor(Size)), size = .6) + 
-  geom_smooth(aes(color = factor(Size)), method = "lm", se = FALSE, formula = 'y ~ x') + 
-  labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
-```
-
-```{r}
+```{r echo=TRUE, fig.cap="Positive Relation between Log Income and Skills"}
 library(gridExtra)
 
 python_graph <- ggplot(data = all_jobs) + 
@@ -161,7 +108,22 @@ aws_graph <- ggplot(data = all_jobs) +
 grid.arrange(python_graph, r_graph, spark_graph, aws_graph, ncol=2)
 ```
 
-```{r}
+And in the following is the example of Python in relation to the median income; unsurprisingly, jobs with Python mentioned in description tend to have a higher median income than those withou.
+
+```{r echo=TRUE}
+ggplot(data=all_jobs, aes(x=python,y=median)) +
+  geom_point() +
+  stat_smooth(method="lm", fullrange=TRUE) +
+  xlab("Rating") + ylab("median for expected income") + 
+  facet_wrap( ~ Size) +
+  theme(axis.title=element_text(size=16),
+        axis.text=element_text(size=14),
+        strip.text=element_text(size=14))
+```
+
+However, there are also skills that are not as much related to the predictive median income or even has a negative relationship on the income. The SQL skill and Excel skill seem to not be a posiive influencer on the income.
+
+```{r echo=TRUE, fig.cap="Non Positive Relation between Log Income and Skills"}
 sql_graph <- ggplot(data = all_jobs) + 
   aes(x = sql, y = log(median)) + 
   geom_point(aes(color = factor(Size)), size = .6) + 
@@ -178,11 +140,34 @@ excel_graph <- ggplot(data = all_jobs) +
 grid.arrange(sql_graph, excel_graph, ncol=2)
 ```
 
-```{r}
-log_jobs <- all_jobs %>% dplyr::select(Company.Name, Location, Headquarters,Job.Title, Size, Industry,Sector, Revenue, median, Rating, R, python, aws, spark, sql, excel) %>% data.frame()
+I would also like to get the relationship between the continuous predictor, rating of the companies, and predictive income. There are mutiple classifications on jobs provided by different companies. For example, the location of the job, the sector of the job, and the even companies' sizes and revenues. All of these classifications can be incorporated into the multilevel regression model. In the following graph, I am showing the rating of the company in relation to the predictive median income of the job posts for companies in different sizes and revenues.
+
+```{r echo=TRUE, fig.cap="Relation between Log Income and Rating"}
+ggplot(data = all_jobs) + 
+  aes(x = log(Rating+1), y = log(median)) + 
+  geom_point(aes(color = factor(Revenue)), size = .6) + 
+  geom_smooth(aes(color = factor(Revenue)), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
+```
+
+```{r echo=TRUE}
+ggplot(data = all_jobs) + 
+  aes(x = log(Rating+1), y = log(median)) + 
+  geom_point(aes(color = factor(Size)), size = .6) + 
+  geom_smooth(aes(color = factor(Size)), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
+```
+
+## Model fitting
+
+First of all, by examine the data, the size and the revenue of the company seems to have some impact on the income. So I choose to apply the multilevel model fitting on the data. it is important to take the log on the large values of income and factorize the predictors with multiple categories, which then could be put into the model.
+
+```{r include=FALSE}
+log_jobs <- all_jobs %>% dplyr::select(Company.Name, Type.of.ownership, Location, Headquarters,Job.Title, Size, Industry,Sector, Revenue, median, Rating, R, python, aws, spark, sql, excel) %>% data.frame()
 
 log_jobs$Company.Name <- as.factor(log_jobs$Company.Name)
 log_jobs$Location <- factor(log_jobs$Location)
+log_jobs$Type.of.ownership <- factor(log_jobs$Type.of.ownership)
 log_jobs$Headquarters <- factor(log_jobs$Headquarters)
 log_jobs$Job.Title <- as.factor(log_jobs$Job.Title)
 log_jobs$Size <- factor(log_jobs$Size)
@@ -194,71 +179,116 @@ log_jobs$Rating <- log(log_jobs$Rating + 2)
 
 ```
 
-```{r}
-library(lattice)
-fit1 <- lmerTest::lmer(median ~ Rating + R + python + aws + sql + spark + excel + (1|Job.Title) +(1|Industry) + (1|Headquarters), data=log_jobs)
-summary(fit1)
-plot(fit1)
-plot(ranef(fit1))
-qqmath(fit1)
+Since many of the predictors are got from job descriptions, those are binary predictors: 1 for True and 0 for False. To fit these predictors into the model, they are fixed. Whereas, the `Location`, `Job.Title`, `Headquarters` , `Size`, and `Revenue` are can be random effects. I first try to fit the mixed model including all the fixed and random effects. However, some of the coefficient are not significant. As a result, I only leave some of the significant random effect with high random intercept variance over the total variance; particularly, I used `Location` and `Job.Title` for random effect.
 
-RandomEffects1 <- as.data.frame(VarCorr(fit1))
-ICC_between1 <- RandomEffects1[1,4]/(RandomEffects1[1,4]+RandomEffects1[3,4]) 
+```{r include=FALSE}
+library(lattice)
+model1 <- lmerTest::lmer(median ~ Rating + R + python + aws + sql + spark + excel +  (1|Location) + (1 |Job.Title), data=log_jobs)
+
+model2 <- lmerTest::lmer(median ~ Rating + R + python + aws + sql + spark + excel +  (1|Location) + (1|Job.Title), data=log_jobs)
+
+model3 <- lmerTest::lmer(median ~ Rating + R + python + aws + sql + spark + excel +  (1|Location) + (1|Job.Title) + (1|Headquarters) , data=log_jobs)
+
+model4 <- lmerTest::lmer(median ~ Rating + R + python + aws + sql + spark + excel +  (1|Location) + (1|Job.Title) + (1 | Size) , data=log_jobs)
+
+
+
+anova(model1, model2, model3,model4)
+
+anova(model1, model3)
+
+
+
+summary(model1)
+plot(model1)
+plot(ranef(model1))
+qqmath(model1)
+anova(model1)
+
+
+
+RandomEffects1 <- as.data.frame(VarCorr(model1))
+ICC_between1 <- RandomEffects1[1,4]/(RandomEffects1[1,4]+RandomEffects1[4,4]) 
 RandomEffects1
 ICC_between1
 
-fit2 <- lmerTest::lmer(median ~ (R + python + aws + sql + spark + excel + (1 | Size) + (1 | Revenue))^3, data=all_jobs)
-summary(fit2)
-plot(fit2)
 ```
 
-```{r}
-qqnorm(residuals(fit1))
+```{r include=FALSE}
+model1 <- lmerTest::lmer(median ~ Rating + R + python + aws + sql + spark + excel +  (1|Location) + (1|Job.Title) , data=log_jobs)
 
 ```
 
+```{r eval=FALSE}
+model1 <- lmerTest::lmer(median ~ Rating + R + python + aws + sql + spark + excel +  (1|Location) + (1|Job.Title) , data=log_jobs)
 
-## job cleaning
-
-```{r}
-## clean the string estimated salary column
-job %<>% separate(Salary.Estimate, c("bottom", "top"), sep = "-")
-regexp <- "[[:digit:]]+"
-job %<>% mutate(bottom = as.numeric(str_extract(bottom, regexp)))
-job %<>% mutate(top = as.numeric(str_extract(top, regexp)))
-job %<>% mutate(median=(bottom+top)/2, .before=top)
 ```
 
-## eda
+From the summary table and graph of fixed effect, we can consider the predictor is statistically significance at $\alpha=0.05$ level. In this case, the coefficients for `python`, `aws`, `sql`, `spark`, and `excel` all have p-values less than 0.05, indicating that they are significant predictors in the model. The coefficient for `Rating` and `R` does not have a significant p-value, indicating that it is not a significant predictor in this model.
 
-```{r}
-ggplot(data = job) + 
-  aes(x = log(Rating), y = log(median)) + 
-  geom_point(aes(color = factor(Revenue)), size = .6) + 
-  geom_smooth(aes(color = factor(Revenue)), method = "lm", se = FALSE, formula = 'y ~ x') + 
-  labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
+```{r echo=FALSE}
+tab_model(model1)
 ```
 
-```{r}
-ggplot(data = job) + 
-  aes(x = log(Rating), y = log(median)) + 
-  geom_point(aes(color = factor(Size)), size = .6) + 
-  geom_smooth(aes(color = factor(Size)), method = "lm", se = FALSE, formula = 'y ~ x') + 
-  labs(title = "(a) Salary vs Rating", x = "log(average Rating)", y = "log(Salary)")
+```{r, fig.cap="Fixed Effect of Median Income Model"}
+plotFEsim(FEsim(model1, n.sims = 100), level = 0.9, stat = 'median', intercept = FALSE)
 ```
 
-```{r}
-ggplot(data = job) + 
-  aes(x = python_yn, y = log(median)) + 
-  geom_point(aes(color = factor(Size)), size = .6) + 
-  geom_smooth(aes(color = factor(Size)), method = "lm", se = FALSE, formula = 'y ~ x') + 
-  labs(title = "(a) Salary vs Rating", x = "Requred python or not", y = "log(Salary)")
+```{r include=FALSE}
+library(merTools)
+library(performance)
+library(ggplot2)
+test <- REsim(model1, n.sims = 1000) 
+  # %>% filter(groupFctr == "Team")
+# unique(Team_level$term); 
+Team_level$term <- factor(Team_level$term)
+Team_level$groupID <- factor(Team_level$groupID)
 ```
 
-```{r}
-ggplot(data = job) + 
-  aes(x = python_yn, y = log(median)) + 
-  geom_point(aes(color = factor(Size)), size = .6) + 
-  geom_smooth(aes(color = factor(Size)), method = "lm", se = FALSE, formula = 'y ~ x') + 
-  labs(title = "(a) Salary vs Rating", x = "Requred python or not", y = "log(Salary)")
+```{r echo=TRUE, fig.cap="Random Effect of NBA Model"}
+ggplot(Team_level) + 
+  geom_pointrange(aes(x = groupID, y = mean, ymax = mean+2*sd, ymin = mean-2*sd, group = term, color = term)) +
+  facet_wrap(~term, ncol = 3) + ylab("Random Effect") + xlab("Team") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 7)) + theme(legend.position = "none")
 ```
+
+From the following graph, we can see the significance of fixed effect on all predictors. As you can see, there are 2 predictors are not as significant as others, the `R` and `Rating`.
+
+```{r echo=TRUE}
+head(round(ranef(model1)$Location, digits = 2))
+head(round(ranef(model1)$Job.Title, digits = 2))
+```
+
+```{r echo=TRUE}
+performance::posterior_predictive_check(object = model1, iterations = 100)
+
+if (require("see")) {
+  check_predictions(model1)
+}
+```
+
+## Results
+
+### Interpretation
+
+First, we can fit the formula with only the fixed effect: $$log(median+1)=4.31 + 0.08 \times python +  0.02 \times aws - 0.01 \times sql + 0.08 \times spark -0.02 \times excel $$ Different Job Title and Working location will also have an impact on the median income. And in the formula, the main change is on the interceptions. If we take the Sr. Data Engineer as the job title and the working location is in California, the formula will become: $$ log(median+1)=4.37 + 0.08 \times python +  0.02 \times aws - 0.01 \times sql + 0.08 \times spark -0.02 \times excel  $$ In both formula, Rating and R are dropped due to its insignificant p-valus. The formula can be interpret as for a Sr. Data Engineer worked in California, the median income is $$e^{4.31}-1= 73.44$$ thousands. The coefficient for `python` has a weight of 0.08, which means that if `python` is addressed in the job description, the averaged median income is $$e^{0.08}= 1.08$$ times higher than those isn't. The coefficient for `spark` is also 0.08 and so it can be interpreted the same as `python.` `aws` has a coefficient of 0.02, which means that if `aws` is addressed in the job description, the averaged median income is $$e^{0.02}= 1.02$$ times higher. The coefficients for `sql` and `excel` are negative, which means that job descriptions with SQL and excel mentioned on average have lower median income than those aren't. Basically, jobs with SQL will have 1% lower median income than those aren't and those with excel are 2% lower.
+
+## Model Check
+
+On the left is the residual plot and right is the residual Q-Q plot. On the residual plot, we can see the points are kept in the -2 to 2 range and the distribution of points are relatively random. On the residual Q-Q plot, we can see the residual is roughly randomly distributed except for the tails. So we can accept the normal distribution assumption.
+
+```{r echo=TRUE}
+plot(model1)
+qqmath(model1)
+```
+
+## Discussion
+
+In this project, I used the multilevel model to find out the elements that have an impact on the predictive median income for the data science related jobs. And the model take account in two group effects: the job's title and job's location. In short, the fixed effects aren't all as significant as I thought at the beginning and I even find negative correlation between the predictors and outcome which I've never expected before. So the Rating of the company and the R programming skills are not statistically significant to the income. While python, aws, and spark is positively correlated to the income, SQL and excel has negatively correlation to income. As for the random effects, they are reasonably identify the difference between jobs in different titles and locations by changing the intercepts of the model. 
+
+However, there are some limitations in my project as well. First and foremost, most of my predictors are extract from the job descriptions consist of a big chunk of text. Although it will be precise for some distinctive words such as python and spark, getting the R programming skill out of the text is hard and imprecise. So I might miss some predictor which leads to an underestimate of the significance. 
+
+
+
+
+
